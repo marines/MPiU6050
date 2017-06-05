@@ -1,0 +1,15 @@
+{
+  "name": "marines-imu",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mariusz Kujawski <mariusz@kujaw.ski>",
+  "license": "MIT",
+  "dependencies": {
+    "i2c": "^0.2.3",
+    "mpu6050": "git+https://github.com/jstapels/mpu6050.git"
+  }
+}
