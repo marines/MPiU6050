@@ -4,12 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Mariusz Kujawski <mariusz@kujaw.ski>",
   "license": "MIT",
   "dependencies": {
+    "express": "^4.15.3",
     "i2c": "^0.2.3",
-    "mpu6050": "git+https://github.com/jstapels/mpu6050.git"
+    "nodemon": "^1.11.0",
+    "socket.io": "^2.0.2"
   }
 }
