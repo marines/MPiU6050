@@ -3,8 +3,11 @@
 <body>
   <p id='motion'></p>
   <p id='motion2'></p>
+  <canvas id="myChart" width="900" height="200"></canvas>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/85/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
   <script>
     var socket = io();
 
@@ -44,9 +47,27 @@
     };
 
     function handleMotionEvent2(cube, { roll, pitch, yaw }) {
-      cube.rotation.x = roll;
-      cube.rotation.z = pitch;
-      cube.rotation.y = yaw;
+      var time = moment().toDate();
+      chartPitch.push({ x: time, y: -pitch });
+      chartRoll.push({ x: time, y: roll });
+      chartYaw.push({ x: time, y: -yaw });
+
+      if (chartPitch.length >= 100) {
+        chartPitch.shift();
+      }
+
+      if (chartRoll.length >= 100) {
+        chartRoll.shift();
+      }
+
+      if (chartYaw.length >= 100) {
+        chartYaw.shift();
+      }
+
+      myChart.update();
+      cube.rotation.x = roll * Math.PI / 180;
+      cube.rotation.z = -pitch * Math.PI / 180;
+      cube.rotation.y = -yaw * Math.PI / 180;
     };
 
     function three() {
@@ -69,6 +90,64 @@
 
       return scene;
     }
+
+
+
+
+    /////////////////////////////
+
+var chartPitch = [];
+var chartRoll = [];
+var chartYaw = [];
+
+var chartData = {
+    datasets: [{
+        label: 'pitch',
+        data: chartPitch,
+        backgroundColor: 'rgba(255, 99, 132, 0.01)',
+        borderColor: 'rgba(255,99,132,1)',
+        borderWidth: 1
+    }, {
+        label: 'roll',
+        data: chartRoll,
+        backgroundColor: 'rgba(255, 99, 132, 0.01)',
+        borderColor: 'rgba(255,99,132,1)',
+        borderWidth: 1
+    }, {
+        label: 'yaw',
+        data: chartYaw,
+        backgroundColor: 'rgba(255, 99, 132, 0.01)',
+        borderColor: 'rgba(255,99,132,1)',
+        borderWidth: 1
+    }]
+};
+var ctx = document.getElementById("myChart").getContext('2d');
+var myChart = new Chart(ctx, {
+    type: 'line',
+    data: chartData,
+    options: {
+        responsive: false,
+        scales: {
+            xAxes: [{
+                type: 'time',
+                display: false,
+                scaleLabel: {
+                  display: false,
+                  labelString: 'Date'
+                }
+            }],
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+          },
+          animation: {
+            duration: 0
+          }
+    }
+});
+
   </script>
 </body>
 
