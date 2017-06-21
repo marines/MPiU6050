@@ -1,61 +1,75 @@
 <html>
-  <body>
-    <p id='motion'></p>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/85/three.min.js"></script>
-    <script>
-      var socket = io();
-      var cube;
-      three();
-      var el = document.getElementById('motion');
-      socket.on('motion', function(motion) {
-        handleMotionEvent(motion);
-        el.innerHTML = JSON.stringify(motion, null, 2).split('\n').join('<br/>');
+
+<body>
+  <p id='motion'></p>
+  <p id='motion2'></p>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/85/three.min.js"></script>
+  <script>
+    var socket = io();
+
+    var geometry = new THREE.BoxGeometry(700, 700, 700, 3, 3, 3);
+    var material = new THREE.MeshBasicMaterial({
+      color: 0xfffff,
+      wireframe: true
+    });
+
+    var scene1 = three();
+    var cube1 = new THREE.Mesh(geometry, material);
+    scene1.add(cube1);
+
+    var scene2 = three();
+    var cube2 = new THREE.Mesh(geometry, material);
+    scene2.add(cube2);
+
+    var el = document.getElementById('motion');
+    socket.on('motion', function (motion) {
+      handleMotionEvent(cube1, motion);
+      el.innerHTML = JSON.stringify(motion, null, 2).split('\n').join('<br/>');
+    });
+    var el2 = document.getElementById('motion2');
+    socket.on('motion2', function (motion) {
+      handleMotionEvent2(cube2, motion);
+      el2.innerHTML = JSON.stringify(motion, null, 2).split('\n').join('<br/>');
+    });
+
+    function handleMotionEvent(cube, event) {
+      var x = event.accX;
+      var y = event.accY;
+      var z = event.accZ;
+
+      cube.rotation.x = Math.atan2(y, z);
+      cube.rotation.z = Math.atan2(x, Math.sqrt(y * y + z * z));
+      cube.rotation.y = 0;
+    };
+
+    function handleMotionEvent2(cube, { roll, pitch, yaw }) {
+      cube.rotation.x = roll;
+      cube.rotation.z = pitch;
+      cube.rotation.y = yaw;
+    };
+
+    function three() {
+      var scene = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera(75, 320 / 240, 1, 10000);
+      camera.position.z = 1000;
+
+      var renderer = new THREE.WebGLRenderer({
+        antialias: true
       });
+      renderer.setSize(320, 240);
+      document.body.appendChild(renderer.domElement);
 
-
-
-
-
-function handleMotionEvent(event) {
-  var x = Math.round(event.accX * 10) / 10;
-  var y = Math.round(event.accY * 10) / 10;
-  var z = Math.round(event.accZ * 10) / 10;
-  
-//    cube.rotation.x = x * Math.PI / 180;
-//    cube.rotation.y = y * Math.PI / 180;
-//    cube.rotation.z = z * Math.PI / 180;
-    cube.rotation.x = -Math.atan2(-y, z)*180/Math.PI / 60;
-    cube.rotation.z = Math.atan2(x, Math.sqrt(y*y + z*z))*180/Math.PI / 60;
-    cube.rotation.y = 0;
-};
-
-
-
-
-      function three() {
-
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
-
-var renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
-
-var geometry = new THREE.BoxGeometry( 700, 700, 700, 10, 10, 10 );
-var material = new THREE.MeshBasicMaterial( { color: 0xfffff, wireframe: true } );
-cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
-
-camera.position.z = 1000;
-
-function render() {
-    requestAnimationFrame( render );
-    renderer.render( scene, camera );
-}
-render();
-
+      function render() {
+        requestAnimationFrame(render);
+        renderer.render(scene, camera);
       }
-    </script>
-  </body>
+
+      render();
+
+      return scene;
+    }
+  </script>
+</body>
+
 </html>
