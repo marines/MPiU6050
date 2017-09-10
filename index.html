@@ -8,6 +8,10 @@
   <title>MPiU6050 wireless IMU</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
   <style>
+    body {
+      padding-top: 50px;
+    }
+
     .angle {
       text-align: right;
     }
@@ -50,7 +54,7 @@
   <div class="container">
     <div id="scene" class="col-md-8"></div>
     <div class="col-md-4">
-      <canvas id="myChart" width="200" height="200"></canvas>
+      <canvas id="myChart" width="200" height="300"></canvas>
     </div>
   </div>
 
@@ -113,6 +117,8 @@
 
     function handleMotionEvent2(cube, [roll, pitch, yaw]) {
       var time = moment().toDate();
+
+      chartLabels.push(time);
       chartPitch.push({
         x: time,
         y: pitch
@@ -126,19 +132,22 @@
         y: yaw
       });
 
-      if (chartPitch.length >= 100) {
+      if (chartLabels.length >= 25) {
+        chartLabels.shift();
+      }
+
+      if (chartPitch.length >= 25) {
         chartPitch.shift();
       }
 
-      if (chartRoll.length >= 100) {
+      if (chartRoll.length >= 25) {
         chartRoll.shift();
       }
 
-      if (chartYaw.length >= 100) {
+      if (chartYaw.length >= 25) {
         chartYaw.shift();
       }
 
-      myChart.update();
       cube.rotation.z = roll * Math.PI / 180;
       cube.rotation.x = pitch * Math.PI / 180;
       cube.rotation.y = yaw * Math.PI / 180;
@@ -149,32 +158,36 @@
     var chartPitch = [];
     var chartRoll = [];
     var chartYaw = [];
-
+    var chartLabels = [];
 
 
     var chartData = {
+      labels: chartLabels,
       datasets: [{
-        label: 'pitch',
+        label: 'Y',
         data: chartPitch,
-        backgroundColor: 'rgba(255, 99, 132, 0.01)',
+        fill: false,
+        backgroundColor: 'rgba(205,92,92,1)',
         borderColor: 'rgba(205,92,92,1)',
-        borderWidth: 1,
+        borderWidth: 2,
         pointRadius: 0,
         yAxisID: 'xyScale'
       }, {
-        label: 'roll',
+        label: 'X',
         data: chartRoll,
-        backgroundColor: 'rgba(255, 99, 132, 0.01)',
+        fill: false,
+        backgroundColor: 'rgba(154,205,50,1)',
         borderColor: 'rgba(154,205,50,1)',
-        borderWidth: 1,
+        borderWidth: 2,
         pointRadius: 0,
         yAxisID: 'xyScale'
       }, {
-        label: 'yaw',
+        label: 'Z',
         data: chartYaw,
-        backgroundColor: 'rgba(255, 99, 132, 0.01)',
+        fill: false,
+        backgroundColor: 'rgba(30,144,255,1)',
         borderColor: 'rgba(30,144,255,1)',
-        borderWidth: 1,
+        borderWidth: 2,
         pointRadius: 0,
         yAxisID: 'zScale'
       }]
@@ -184,7 +197,14 @@
       type: 'line',
       data: chartData,
       options: {
-        responsive: false,
+        responsive: true,
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+          },
+        },
+        events: [],
         scales: {
           xAxes: [{
             type: 'time',
@@ -192,7 +212,8 @@
             scaleLabel: {
               display: false,
               labelString: 'Date'
-            }
+            },
+            time: {},
           }],
           yAxes: [{
             position: 'left',
@@ -200,7 +221,8 @@
             ticks: {
               min: -90,
               max: 90,
-              beginAtZero: true
+              beginAtZero: true,
+              stepSize: 30,
             }
           }, {
             position: 'right',
@@ -208,19 +230,22 @@
             ticks: {
               min: -360,
               max: 360,
-              beginAtZero: true
-            }
+              beginAtZero: true,
+              stepSize: 120,
+            },
+            gridLines: {
+              display: false,
+            },
           }]
         },
-        animation: {
-          duration: 0
-        }
+        animation: false
       }
     });
 
     function render() {
       requestAnimationFrame(render);
       renderer.render(scene, camera);
+      myChart.update();
     }
 
     render();
