@@ -1,126 +1,68 @@
-const { io } = require('../../server');
-const exitHandlers = require('../../exit');
-var mpu6050 = require('./mpu6050');
+const {
+  io
+} = require('./server');
+const {
+  mpu,
+  offset,
+  initSensors,
+  calibrate,
+  readSensors,
+} = require('./sensors');
 
-var mpu = new mpu6050();
+const GYROSCOPE_SCALE_FACTOR = 131;
+const dt = 0.01;
+const calibrationSamples = 100;
+const sampleRate = 60;
+const filterCoefficient = 0.96;
 
-const offset = {
-  aX: 0,
-  aY: 0,
-  aZ: 0,
-  gX: 0,
-  gY: 0,
-  gZ: 0,
-};
+let angleX = 0;
+let angleY = 0;
+let angleZ = 0;
 
-let angle_x = 0;
-let angle_y = 0;
-let angle_z = 0;
-
-initSensors().then(() => {
-  calibrate().then(() => {
-    console.log('Calibration finished and these are the offsets:');
-    console.log(offset);
-  }).then(loop);
-})
-
-function calibrate() {
-  console.log('Calibrating the sensor, hold the device in a neutral position...');
-
-  const promises = [];
-  for (let i = 0; i < 100; i++) {
-    promises.push(readSensors());
-  }
-
-  return Promise.all(promises).then((readings) => {
-    return readings.reduce((averages, reading) => {
-      if (!averages) {
-        return reading;
-      }
-
-      return averages.map((value, index) => value + (reading[index]));
-    }).map((value) => value / 100);
-  }).then((calibrationData) => {
-    offset.aX = calibrationData[0];
-    offset.aY = calibrationData[1];
-    offset.aZ = calibrationData[2] - 16384;
-    offset.gX = calibrationData[3];
-    offset.gY = calibrationData[4];
-    offset.gZ = calibrationData[5];
-  });
-}
-
-function initSensors() {
-  return new Promise((resolve, reject) => {
-    mpu.initialize();
-    mpu.testConnection(function (err, testPassed) {
-      if (!testPassed) {
-        reject('Connection failed! ' + err);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
-
-function readSensors() {
-  return new Promise((resolve, reject) => {
-    mpu.getMotion6((err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(data);
-      }
-    });
-  });
+function start() {
+  return initSensors()
+    .then(() => calibrate(calibrationSamples))
+    .then(() => console.log('Calibration finished and these are the offsets:'))
+    .then(() => console.log(offset))
+    .then(() => console.log('Application started...'))
+    .then(loop);
 }
 
 function loop() {
   return new Promise((resolve, reject) => {
-    readSensors().then(([aX, aY, aZ, gX, gY, gZ]) => {
-      let dt = 0.01;
-
-    /**
-     * arduino
-     * http://www.geekmomprojects.com/mpu-6050-redux-dmp-data-fusion-vs-complementary-filter/
-     */
-      let gyro_x = (gX - offset.gX) / 131;
-      let gyro_y = (gY - offset.gY) / 131;
-      let gyro_z = (gZ - offset.gZ) / 131;
-      let accel_x = aX - offset.aX;
-      let accel_y = aY - offset.aY;
-      let accel_z = aZ - offset.aZ;
-
-      // console.log([gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z]);
-
-      let accel_angle_y = Math.atan(-accel_x / Math.sqrt(Math.pow(accel_y, 2) + Math.pow(accel_z, 2))) * 180 / Math.PI;
-      let accel_angle_x = Math.atan(accel_y / Math.sqrt(Math.pow(accel_x, 2) + Math.pow(accel_z, 2))) * 180 / Math.PI;
-      let accel_angle_z = 0;
-
-      // console.log([accel_angle_x, accel_angle_y, accel_angle_z]);
-
-      let gyro_angle_x = gyro_x * dt + angle_x;
-      let gyro_angle_y = gyro_y * dt + angle_y;
-      let gyro_angle_z = gyro_z * dt + angle_z;
-
-      // console.log([gyro_angle_x, gyro_angle_y, gyro_angle_z]);
-
-      let alpha = 0.96;
-      angle_x = alpha * gyro_angle_x + (1.0 - alpha) * accel_angle_x;
-      angle_y = alpha * gyro_angle_y + (1.0 - alpha) * accel_angle_y;
-      angle_z = gyro_angle_z;  //Accelerometer doesn't give z-angle
-
-      // console.log([round(angle_x), round(angle_y), round(-angle_z)].map(n => `                                   ${n}`.slice(-10)).join(', '));
-
-      io.emit('motion', [angle_x, angle_y, -angle_z]);
-      setTimeout(resolve, 16); // 33 ~= 30FPS
+    readSensors().then(updateAngles).then(() => {
+      io.emit('motion', [angleX, angleY, angleZ]);
+      setTimeout(resolve, 1000 / sampleRate);
     });
-  }).then(() => loop());
+  }).then(loop);
 }
 
-exitHandlers.push(() => {
-  console.log('go to sleep, sweet prince...');
-  // Put the MPU6050 back to sleep.
-  mpu.setSleepEnabled(1);
-  process.exit(0);
-});
+function updateAngles([accRawX, accRawY, accRawZ, gyrRawX, gyrRawY, gyrRawZ]) {
+  /**
+   * arduino
+   * http://www.geekmomprojects.com/mpu-6050-redux-dmp-data-fusion-vs-complementary-filter/
+   */
+  let gyrX = (gyrRawX - offset.gX) / GYROSCOPE_SCALE_FACTOR;
+  let gyrY = (gyrRawY - offset.gY) / GYROSCOPE_SCALE_FACTOR;
+  let gyrZ = (gyrRawZ - offset.gZ) / GYROSCOPE_SCALE_FACTOR;
+  let accX = accRawX - offset.aX;
+  let accY = accRawY - offset.aY;
+  let accZ = accRawZ - offset.aZ;
+
+  let accAngleY = Math.atan(-accX / Math.sqrt(Math.pow(accY, 2) + Math.pow(accZ, 2))) * 180 / Math.PI;
+  let accAngleX = Math.atan(accY / Math.sqrt(Math.pow(accX, 2) + Math.pow(accZ, 2))) * 180 / Math.PI;
+  let accAngleZ = 0;
+
+  let gyrAngleX = gyrX * dt + angleX;
+  let gyrAngleY = gyrY * dt + angleY;
+  let gyrAngleZ = gyrZ * dt + angleZ;
+
+  angleX = filterCoefficient * gyrAngleX + (1.0 - filterCoefficient) * accAngleX;
+  angleY = filterCoefficient * gyrAngleY + (1.0 - filterCoefficient) * accAngleY;
+  angleZ = -gyrAngleZ;
+}
+
+module.exports = {
+  mpu,
+  start,
+};
