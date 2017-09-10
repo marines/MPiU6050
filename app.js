@@ -2,9 +2,7 @@ const { io } = require('../../server');
 const exitHandlers = require('../../exit');
 var mpu6050 = require('./mpu6050');
 
-// Instantiate and initialize.
 var mpu = new mpu6050();
-mpu.initialize();
 
 const offset = {
   aX: 0,
@@ -19,22 +17,12 @@ let angle_x = 0;
 let angle_y = 0;
 let angle_z = 0;
 
-// Test the connection before using.
-mpu.testConnection(function (err, testPassed) {
-  if (!testPassed) {
-    console.log('Connection failed!');
-    return;
-  }
-
+initSensors().then(() => {
   calibrate().then(() => {
     console.log('Calibration finished and these are the offsets:');
     console.log(offset);
   }).then(loop);
-});
-
-function round(n) {
-  return Math.round(n * 1000) / 1000;
-}
+})
 
 function calibrate() {
   console.log('Calibrating the sensor, hold the device in a neutral position...');
@@ -55,10 +43,23 @@ function calibrate() {
   }).then((calibrationData) => {
     offset.aX = calibrationData[0];
     offset.aY = calibrationData[1];
-    offset.aZ = calibrationData[2];
+    offset.aZ = calibrationData[2] - 16384;
     offset.gX = calibrationData[3];
     offset.gY = calibrationData[4];
     offset.gZ = calibrationData[5];
+  });
+}
+
+function initSensors() {
+  return new Promise((resolve, reject) => {
+    mpu.initialize();
+    mpu.testConnection(function (err, testPassed) {
+      if (!testPassed) {
+        reject('Connection failed! ' + err);
+      } else {
+        resolve();
+      }
+    });
   });
 }
 
@@ -76,21 +77,19 @@ function readSensors() {
 
 function loop() {
   return new Promise((resolve, reject) => {
-    readSensors().then((data) => {
-      const [aX, aY, aZ, gX, gY, gZ] = data;
-
+    readSensors().then(([aX, aY, aZ, gX, gY, gZ]) => {
       let dt = 0.01;
 
-/**
- * arduino
- * http://www.geekmomprojects.com/mpu-6050-redux-dmp-data-fusion-vs-complementary-filter/
- */
+    /**
+     * arduino
+     * http://www.geekmomprojects.com/mpu-6050-redux-dmp-data-fusion-vs-complementary-filter/
+     */
       let gyro_x = (gX - offset.gX) / 131;
       let gyro_y = (gY - offset.gY) / 131;
       let gyro_z = (gZ - offset.gZ) / 131;
       let accel_x = aX - offset.aX;
       let accel_y = aY - offset.aY;
-      let accel_z = aZ - offset.aZ + 16384;
+      let accel_z = aZ - offset.aZ;
 
       // console.log([gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z]);
 
