@@ -1,5 +1,7 @@
 const {
-  io
+  io,
+  socket,
+  setResetCallback,
 } = require('./server');
 const {
   mpu,
@@ -9,11 +11,14 @@ const {
   readSensors,
 } = require('./sensors');
 
-const GYROSCOPE_SCALE_FACTOR = 131;
+const GYROSCOPE_SCALE_FACTOR = 65;
 const dt = 0.01;
 const calibrationSamples = 100;
-const sampleRate = 60;
+const sampleRate = 20;
 const filterCoefficient = 0.96;
+
+let lastUpdate = 0;
+let resetInProgress = false;
 
 let angleX = 0;
 let angleY = 0;
@@ -29,10 +34,20 @@ function start() {
 }
 
 function loop() {
+  if (resetInProgress) {
+    setTimeout(loop, 0);
+    return;
+  }
+
   return new Promise((resolve, reject) => {
     readSensors().then(updateAngles).then(() => {
-      io.emit('motion', [angleX, angleY, angleZ]);
-      setTimeout(resolve, 1000 / sampleRate);
+      const now = (new Date()).getTime();
+      if (now - lastUpdate > 1000 / sampleRate) {
+        io.emit('motion', [angleX, angleY, angleZ]);
+        lastUpdate = now;
+      }
+
+      setTimeout(resolve, 10);
     });
   }).then(loop);
 }
@@ -57,10 +72,30 @@ function updateAngles([accRawX, accRawY, accRawZ, gyrRawX, gyrRawY, gyrRawZ]) {
   let gyrAngleY = gyrY * dt + angleY;
   let gyrAngleZ = gyrZ * dt + angleZ;
 
-  angleX = filterCoefficient * gyrAngleX + (1.0 - filterCoefficient) * accAngleX;
-  angleY = filterCoefficient * gyrAngleY + (1.0 - filterCoefficient) * accAngleY;
-  angleZ = -gyrAngleZ;
+  let complementaryAngleX = filterCoefficient * gyrAngleX + (1.0 - filterCoefficient) * accAngleX;
+  let complementaryAngleY = filterCoefficient * gyrAngleY + (1.0 - filterCoefficient) * accAngleY;
+
+  angleX = 0.1 * angleX + 0.9 * complementaryAngleX;
+  angleY = 0.1 * angleY + 0.9 * complementaryAngleY;
+  angleZ = (0.1 * angleZ + 0.9 * gyrAngleZ) % 360;
 }
+
+function reset() {
+  resetInProgress = true;
+  console.log('Calibration has been requested...');
+
+  return calibrate(calibrationSamples)
+    .then(() => console.log('Calibration finished and these are the offsets:'))
+    .then(() => console.log(offset))
+    .then(() => {
+      angleX = 0;
+      angleY = 0;
+      angleZ = 0;
+      resetInProgress = false;
+    });
+}
+
+setResetCallback(reset);
 
 module.exports = {
   mpu,

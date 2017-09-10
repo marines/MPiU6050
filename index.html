@@ -1,9 +1,59 @@
 <html>
 
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <title>MPiU6050 wireless IMU</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
+  <style>
+    .angle {
+      text-align: right;
+    }
+
+    .angle span {
+      display: inline-block;
+      width: 35px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+
 <body>
-  <p id='motion'></p>
-  <p id='motion2'></p>
-  <canvas id="myChart" width="900" height="200"></canvas>
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false"
+          aria-controls="navbar">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+        <a class="navbar-brand" href="#">MPiU6050</a>
+      </div>
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class="nav navbar-nav">
+          <li class="angle"><a href="#">X: <span id="angleX"></span></a></li>
+          <li class="angle"><a href="#">Y: <span id="angleY"></span></a></li>
+          <li class="angle"><a href="#">Z: <span id="angleZ"></span></a></li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+            <li style="padding-top:0.5em"><button id="resetBtn" class="btn btn-primary">Reset</button></li>
+          </ul>
+      </div>
+      <!--/.nav-collapse -->
+    </div>
+  </nav>
+
+  <div class="container">
+    <div id="scene" class="col-md-8"></div>
+    <div class="col-md-4">
+      <canvas id="myChart" width="200" height="200"></canvas>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/85/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
@@ -11,27 +61,70 @@
   <script>
     var socket = io();
 
+    function round(n) {
+      var rounded = Math.round(n*10)/10;
+      if (rounded === Math.round(n)) {
+        return `${rounded}.0`;
+      }
+      return rounded;
+    }
+
+    var angleXEl = document.getElementById('angleX');
+    var angleYEl = document.getElementById('angleY');
+    var angleZEl = document.getElementById('angleZ');
+    var sceneEl = document.getElementById('scene');
+    var resetEl = document.getElementById('resetBtn');
+
+    var sceneWidth = sceneEl.clientWidth;
+    var sceneHeight = 480;
+
+    resetEl.onclick = function (e) {
+      e.preventDefault();
+      console.log('resetting');
+      socket.emit('reset', true);
+    }
+
     var geometry = new THREE.BoxGeometry(700, 100, 300, 3, 3, 3);
     var material = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
+      color: 0x000000,
       wireframe: true
     });
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(75, sceneWidth / sceneHeight, 1, 10000);
+    camera.position.z = 1000;
+    var renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true
+    });
+    renderer.setSize(sceneWidth, sceneHeight);
+    renderer.setClearColor(0xffffff, 0);
+    var cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
 
-    var { scene, camera } = three();
-    var cube2 = new THREE.Mesh(geometry, material);
-    scene.add(cube2);
+    document.getElementById('scene').appendChild(renderer.domElement);
 
-    var el2 = document.getElementById('motion2');
+
     socket.on('motion', function (motion) {
-      handleMotionEvent2(cube2, motion);
-      el2.innerHTML = JSON.stringify(motion, null, 2).split('\n').join('<br/>');
+      handleMotionEvent2(cube, motion);
+      angleXEl.innerText = round(motion[0]);
+      angleYEl.innerText = round(motion[1]);
+      angleZEl.innerText = round(motion[2]);
     });
 
-    function handleMotionEvent2(cube, [ roll, pitch, yaw ]) {
+    function handleMotionEvent2(cube, [roll, pitch, yaw]) {
       var time = moment().toDate();
-      chartPitch.push({ x: time, y: pitch });
-      chartRoll.push({ x: time, y: roll });
-      chartYaw.push({ x: time, y: yaw });
+      chartPitch.push({
+        x: time,
+        y: pitch
+      });
+      chartRoll.push({
+        x: time,
+        y: roll
+      });
+      chartYaw.push({
+        x: time,
+        y: yaw
+      });
 
       if (chartPitch.length >= 100) {
         chartPitch.shift();
@@ -51,82 +144,86 @@
       cube.rotation.y = yaw * Math.PI / 180;
     };
 
-    function three() {
-      var scene = new THREE.Scene();
-      var camera = new THREE.PerspectiveCamera(75, 320 / 240, 1, 10000);
-      camera.position.z = 1000;
-
-      var renderer = new THREE.WebGLRenderer({
-        antialias: true
-      });
-      renderer.setSize(320, 240);
-      document.body.appendChild(renderer.domElement);
-
-      function render() {
-        requestAnimationFrame(render);
-        renderer.render(scene, camera);
-      }
-
-      render();
-
-      return { scene, camera };
-    }
-
-
     /////////////////////////////
 
-var chartPitch = [];
-var chartRoll = [];
-var chartYaw = [];
+    var chartPitch = [];
+    var chartRoll = [];
+    var chartYaw = [];
 
-var chartData = {
-    datasets: [{
+
+
+    var chartData = {
+      datasets: [{
         label: 'pitch',
         data: chartPitch,
         backgroundColor: 'rgba(255, 99, 132, 0.01)',
-        borderColor: 'rgba(255,99,132,1)',
-        borderWidth: 1
-    }, {
+        borderColor: 'rgba(205,92,92,1)',
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'xyScale'
+      }, {
         label: 'roll',
         data: chartRoll,
         backgroundColor: 'rgba(255, 99, 132, 0.01)',
-        borderColor: 'rgba(255,99,132,1)',
-        borderWidth: 1
-    }, {
+        borderColor: 'rgba(154,205,50,1)',
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'xyScale'
+      }, {
         label: 'yaw',
         data: chartYaw,
         backgroundColor: 'rgba(255, 99, 132, 0.01)',
-        borderColor: 'rgba(255,99,132,1)',
-        borderWidth: 1
-    }]
-};
-var ctx = document.getElementById("myChart").getContext('2d');
-var myChart = new Chart(ctx, {
-    type: 'line',
-    data: chartData,
-    options: {
+        borderColor: 'rgba(30,144,255,1)',
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'zScale'
+      }]
+    };
+    var ctx = document.getElementById("myChart").getContext('2d');
+    var myChart = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
         responsive: false,
         scales: {
-            xAxes: [{
-                type: 'time',
-                display: false,
-                scaleLabel: {
-                  display: false,
-                  labelString: 'Date'
-                }
-            }],
-            yAxes: [{
-                ticks: {
-                    beginAtZero:true
-                }
-            }]
-          },
-          animation: {
-            duration: 0
-          }
-    }
-});
+          xAxes: [{
+            type: 'time',
+            display: false,
+            scaleLabel: {
+              display: false,
+              labelString: 'Date'
+            }
+          }],
+          yAxes: [{
+            position: 'left',
+            id: 'xyScale',
+            ticks: {
+              min: -90,
+              max: 90,
+              beginAtZero: true
+            }
+          }, {
+            position: 'right',
+            id: 'zScale',
+            ticks: {
+              min: -360,
+              max: 360,
+              beginAtZero: true
+            }
+          }]
+        },
+        animation: {
+          duration: 0
+        }
+      }
+    });
 
+    function render() {
+      requestAnimationFrame(render);
+      renderer.render(scene, camera);
+    }
+
+    render();
   </script>
 </body>
 

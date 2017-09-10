@@ -12,9 +12,19 @@ const server = express()
 
 const io = socketIO(server);
 
-io.on('connection', (socket) => {
+let socket = () => null;
+let reset = () => null;
+let setResetCallback = (callback) => reset = callback;
+
+io.on('connection', (socket_) => {
+  socket = socket_;
   console.log('A client has connected to the websocket');
   socket.on('disconnect', () => console.log('A client has disconnected form the websocket'));
+  socket.on('reset', reset);
 });
 
-module.exports = { io };
+module.exports = {
+  io,
+  socket,
+  setResetCallback,
+};
