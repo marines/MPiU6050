@@ -88,14 +88,22 @@
       socket.emit('reset', true);
     }
 
-    var geometry = new THREE.BoxGeometry(700, 100, 300, 3, 3, 3);
-    var material = new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      wireframe: true
-    });
+    var geometry = new THREE.BoxGeometry(700, 100, 300, 4, 1, 4);
+    var material = new THREE.MeshLambertMaterial( {
+      transparent: true,
+      opacity: 0.8,
+      color: 0x000088
+    } );
+    // var material = new THREE.MeshBasicMaterial({
+    //   color: 0x000000,
+    //   //wireframe: true
+    // });
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, sceneWidth / sceneHeight, 1, 10000);
     camera.position.z = 1000;
+    camera.position.y = 500;
+    camera.up = new THREE.Vector3(0,0,-1);
+    camera.lookAt(new THREE.Vector3(0,0,0));
     var renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: true
@@ -104,6 +112,18 @@
     renderer.setClearColor(0xffffff, 0);
     var cube = new THREE.Mesh(geometry, material);
     scene.add(cube);
+    // LIGHT
+    var light = new THREE.PointLight(0xffffff);
+    light.position.set(-400,400,800);
+    scene.add(light);
+    // FLOOR
+    var floorMaterial = new THREE.MeshBasicMaterial( { color: 0xe3f2e2, side: THREE.DoubleSide } );
+    var floorGeometry = new THREE.PlaneGeometry(1500, 1500, 10, 10);
+    var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.position.y = -400;
+    floor.position.z = -300;
+    floor.rotation.x = Math.PI / 2;
+    scene.add(floor);
 
     document.getElementById('scene').appendChild(renderer.domElement);
 
