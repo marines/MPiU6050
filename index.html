@@ -11,46 +11,27 @@
   <script>
     var socket = io();
 
-    var geometry = new THREE.BoxGeometry(700, 700, 700, 3, 3, 3);
+    var geometry = new THREE.BoxGeometry(700, 100, 300, 3, 3, 3);
     var material = new THREE.MeshBasicMaterial({
-      color: 0xfffff,
+      color: 0xffffff,
       wireframe: true
     });
 
-    var scene1 = three();
-    var cube1 = new THREE.Mesh(geometry, material);
-    scene1.add(cube1);
-
-    var scene2 = three();
+    var { scene, camera } = three();
     var cube2 = new THREE.Mesh(geometry, material);
-    scene2.add(cube2);
+    scene.add(cube2);
 
-    var el = document.getElementById('motion');
-    socket.on('motion', function (motion) {
-      handleMotionEvent(cube1, motion);
-      el.innerHTML = JSON.stringify(motion, null, 2).split('\n').join('<br/>');
-    });
     var el2 = document.getElementById('motion2');
-    socket.on('motion2', function (motion) {
+    socket.on('motion', function (motion) {
       handleMotionEvent2(cube2, motion);
       el2.innerHTML = JSON.stringify(motion, null, 2).split('\n').join('<br/>');
     });
 
-    function handleMotionEvent(cube, event) {
-      var x = event.accX;
-      var y = event.accY;
-      var z = event.accZ;
-
-      cube.rotation.x = Math.atan2(y, z);
-      cube.rotation.z = Math.atan2(x, Math.sqrt(y * y + z * z));
-      cube.rotation.y = 0;
-    };
-
-    function handleMotionEvent2(cube, { roll, pitch, yaw }) {
+    function handleMotionEvent2(cube, [ roll, pitch, yaw ]) {
       var time = moment().toDate();
-      chartPitch.push({ x: time, y: -pitch });
+      chartPitch.push({ x: time, y: pitch });
       chartRoll.push({ x: time, y: roll });
-      chartYaw.push({ x: time, y: -yaw });
+      chartYaw.push({ x: time, y: yaw });
 
       if (chartPitch.length >= 100) {
         chartPitch.shift();
@@ -65,9 +46,9 @@
       }
 
       myChart.update();
-      cube.rotation.x = roll * Math.PI / 180;
-      cube.rotation.z = -pitch * Math.PI / 180;
-      cube.rotation.y = -yaw * Math.PI / 180;
+      cube.rotation.z = roll * Math.PI / 180;
+      cube.rotation.x = pitch * Math.PI / 180;
+      cube.rotation.y = yaw * Math.PI / 180;
     };
 
     function three() {
@@ -88,10 +69,8 @@
 
       render();
 
-      return scene;
+      return { scene, camera };
     }
-
-
 
 
     /////////////////////////////
