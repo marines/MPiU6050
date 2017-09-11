@@ -16,6 +16,7 @@ const dt = 0.01;
 const calibrationSamples = 100;
 const sampleRate = 20;
 const filterCoefficient = 0.96;
+const smoothingCoefficient = 0.2;
 
 let lastUpdate = 0;
 let resetInProgress = false;
@@ -78,9 +79,9 @@ function updateAngles([accRawX, accRawY, accRawZ, gyrRawX, gyrRawY, gyrRawZ]) {
   let complementaryAngleX = filterCoefficient * gyrAngleX + (1.0 - filterCoefficient) * accAngleX;
   let complementaryAngleY = filterCoefficient * gyrAngleY + (1.0 - filterCoefficient) * accAngleY;
 
-  angleX = 0.1 * angleX + 0.9 * complementaryAngleX;
-  angleY = 0.1 * angleY + 0.9 * complementaryAngleY;
-  angleZ = (0.1 * angleZ + 0.9 * gyrAngleZ) % 360;
+  angleX = smoothingCoefficient * angleX + (1 - smoothingCoefficient) * complementaryAngleX;
+  angleY = smoothingCoefficient * angleY + (1 - smoothingCoefficient) * complementaryAngleY;
+  angleZ = smoothingCoefficient * angleZ + (1 - smoothingCoefficient) * gyrAngleZ;
 }
 
 function reset() {

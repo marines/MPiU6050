@@ -54,7 +54,8 @@
   <div class="container">
     <div id="scene" class="col-md-8"></div>
     <div class="col-md-4" style="padding-top:1em">
-      <canvas id="myChart" width="200" height="250"></canvas>
+      <canvas id="myChart" width="200" height="200"></canvas>
+      <canvas id="accChart" width="200" height="200"></canvas>
     </div>
   </div>
 
@@ -193,7 +194,8 @@
 
     function handleMotionEvent2(cube, [x, y, z, accX, accY, accZ]) {
       var time = moment().toDate();
-      addData(myChart, time, [y, x, z, accY, accX, accZ]);
+      addData(myChart, time, [y, x, z]);
+      addData(accChart, time, [accY, accX, accZ]);
 
       cube.rotation.x = x * Math.PI / 180;
       cube.rotation.y = z * Math.PI / 180;
@@ -210,6 +212,7 @@
     var chartAccX = [];
     var chartAccZ = [];
     var chartLabels = Array(50);
+    var accLabels = Array(50);
 
     var chartData = {
       labels: chartLabels,
@@ -240,33 +243,6 @@
         borderWidth: 2,
         pointRadius: 0,
         yAxisID: 'xyScale'
-      }, {
-        label: 'Acc Z',
-        data: chartAccZ,
-        fill: false,
-        backgroundColor: 'rgba(249, 212, 212,1)',
-        borderColor: 'rgba(249, 212, 212,1)',
-        borderWidth: 2,
-        pointRadius: 0,
-        yAxisID: 'accScale'
-      }, {
-        label: 'Acc Y',
-        data: chartAccY,
-        fill: false,
-        backgroundColor: 'rgba(224, 241, 187,1)',
-        borderColor: 'rgba(224, 241, 187,1)',
-        borderWidth: 2,
-        pointRadius: 0,
-        yAxisID: 'accScale'
-      }, {
-        label: 'Acc X',
-        data: chartAccX,
-        fill: false,
-        backgroundColor: 'rgba(202, 227, 251,1)',
-        borderColor: 'rgba(202, 227, 251,1)',
-        borderWidth: 2,
-        pointRadius: 0,
-        yAxisID: 'accScale'
       }]
     };
     var ctx = document.getElementById("myChart").getContext('2d');
@@ -274,6 +250,10 @@
       type: 'line',
       data: chartData,
       options: {
+        title: {
+          display: true,
+          text: 'Angles over time',
+        },
         responsive: true,
         legend: {
           position: 'bottom',
@@ -311,17 +291,88 @@
             gridLines: {
               display: false,
             },
-          }, {
+          }]
+        },
+        animation: false,
+        animationSteps: 1,
+      }
+    });
+
+    var accData = {
+      labels: accLabels,
+      datasets: [{
+        label: 'Acc Z',
+        data: chartAccZ,
+        fill: false,
+        backgroundColor: 'rgba(249, 212, 212,1)',
+        borderColor: 'rgba(249, 212, 212,1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        yAxisID: 'accScale'
+      }, {
+        label: 'Acc Y',
+        data: chartAccY,
+        fill: false,
+        backgroundColor: 'rgba(224, 241, 187,1)',
+        borderColor: 'rgba(224, 241, 187,1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        yAxisID: 'accScale'
+      }, {
+        label: 'Acc X',
+        data: chartAccX,
+        fill: false,
+        backgroundColor: 'rgba(202, 227, 251,1)',
+        borderColor: 'rgba(202, 227, 251,1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        yAxisID: 'accScale'
+      }]
+    };
+    var accCtx = document.getElementById("accChart").getContext('2d');
+    var accChart = new Chart(accCtx, {
+      type: 'line',
+      data: accData,
+      options: {
+        title: {
+          display: true,
+          text: 'Acceleration over time',
+        },
+        responsive: true,
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+          },
+        },
+        events: [],
+        scales: {
+          xAxes: [{
+            display: false,
+            scaleLabel: {
+              display: false,
+              labelString: 'Date'
+            },
+          }],
+          yAxes: [{
             position: 'right',
             id: 'accScale',
             ticks: {
-              min: -1.2,
-              max: 1.2,
+              min: -1.5,
+              max: 1.5,
               beginAtZero: true,
               stepSize: 0.4,
             },
             gridLines: {
               display: false,
+            },
+          }, {
+            position: 'left',
+            ticks: {
+              min: -1.5,
+              max: 1.5,
+              beginAtZero: true,
+              stepSize: 0.4,
             },
           }]
         },
@@ -334,6 +385,7 @@
       requestAnimationFrame(render);
       renderer.render(scene, camera);
       myChart.update({ duration: 0 });
+      accChart.update({ duration: 0 });
     }
 
     render();
