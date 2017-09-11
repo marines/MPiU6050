@@ -53,8 +53,8 @@
 
   <div class="container">
     <div id="scene" class="col-md-8"></div>
-    <div class="col-md-4">
-      <canvas id="myChart" width="200" height="300"></canvas>
+    <div class="col-md-4" style="padding-top:1em">
+      <canvas id="myChart" width="200" height="250"></canvas>
     </div>
   </div>
 
@@ -91,7 +91,7 @@
       var mat;
 
       if(dashed) {
-              mat = new THREE.LineDashedMaterial({ linewidth: 5, color: colorHex, dashSize: 10, gapSize: 10 });
+              mat = new THREE.LineDashedMaterial({ linewidth: 5, color: colorHex, dashSize: 20, gapSize: 20 });
       } else {
               mat = new THREE.LineBasicMaterial({ linewidth: 5, color: colorHex });
       }
@@ -175,38 +175,25 @@
       angleZEl.innerText = round(motion[2]);
     });
 
-    function handleMotionEvent2(cube, [x, y, z]) {
+    function addData(chart, label, data) {
+      chart.data.labels.push(label);
+
+      if (chart.data.labels.length > 50) {
+        chart.data.labels.shift();
+      }
+
+      chart.data.datasets.forEach((dataset, index) => {
+        dataset.data.push(data[index]);
+
+        if (dataset.data.length > 50) {
+          dataset.data.shift();
+        }
+      });
+    }
+
+    function handleMotionEvent2(cube, [x, y, z, accX, accY, accZ]) {
       var time = moment().toDate();
-
-      chartLabels.push(time);
-      chartY.push({
-        x: time,
-        y: y
-      });
-      chartX.push({
-        x: time,
-        y: x
-      });
-      chartZ.push({
-        x: time,
-        y: z
-      });
-
-      if (chartLabels.length >= 25) {
-        chartLabels.shift();
-      }
-
-      if (chartY.length >= 25) {
-        chartY.shift();
-      }
-
-      if (chartX.length >= 25) {
-        chartX.shift();
-      }
-
-      if (chartZ.length >= 25) {
-        chartZ.shift();
-      }
+      addData(myChart, time, [y, x, z, accY, accX, accZ]);
 
       cube.rotation.x = x * Math.PI / 180;
       cube.rotation.y = z * Math.PI / 180;
@@ -219,13 +206,15 @@
     var chartY = [];
     var chartX = [];
     var chartZ = [];
-    var chartLabels = [];
-
+    var chartAccY = [];
+    var chartAccX = [];
+    var chartAccZ = [];
+    var chartLabels = Array(50);
 
     var chartData = {
       labels: chartLabels,
       datasets: [{
-        label: 'Z',
+        label: '⦨Z',
         data: chartZ,
         fill: false,
         backgroundColor: 'rgba(205,92,92,1)',
@@ -234,7 +223,7 @@
         pointRadius: 0,
         yAxisID: 'zScale'
       }, {
-        label: 'Y',
+        label: '⦨Y',
         data: chartY,
         fill: false,
         backgroundColor: 'rgba(154,205,50,1)',
@@ -243,7 +232,7 @@
         pointRadius: 0,
         yAxisID: 'xyScale'
       }, {
-        label: 'X',
+        label: '⦨X',
         data: chartX,
         fill: false,
         backgroundColor: 'rgba(30,144,255,1)',
@@ -251,6 +240,33 @@
         borderWidth: 2,
         pointRadius: 0,
         yAxisID: 'xyScale'
+      }, {
+        label: 'Acc Z',
+        data: chartAccZ,
+        fill: false,
+        backgroundColor: 'rgba(249, 212, 212,1)',
+        borderColor: 'rgba(249, 212, 212,1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        yAxisID: 'accScale'
+      }, {
+        label: 'Acc Y',
+        data: chartAccY,
+        fill: false,
+        backgroundColor: 'rgba(224, 241, 187,1)',
+        borderColor: 'rgba(224, 241, 187,1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        yAxisID: 'accScale'
+      }, {
+        label: 'Acc X',
+        data: chartAccX,
+        fill: false,
+        backgroundColor: 'rgba(202, 227, 251,1)',
+        borderColor: 'rgba(202, 227, 251,1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        yAxisID: 'accScale'
       }]
     };
     var ctx = document.getElementById("myChart").getContext('2d');
@@ -268,13 +284,11 @@
         events: [],
         scales: {
           xAxes: [{
-            type: 'time',
             display: false,
             scaleLabel: {
               display: false,
               labelString: 'Date'
             },
-            time: {},
           }],
           yAxes: [{
             position: 'left',
@@ -297,16 +311,29 @@
             gridLines: {
               display: false,
             },
+          }, {
+            position: 'right',
+            id: 'accScale',
+            ticks: {
+              min: -1.2,
+              max: 1.2,
+              beginAtZero: true,
+              stepSize: 0.4,
+            },
+            gridLines: {
+              display: false,
+            },
           }]
         },
-        animation: false
+        animation: false,
+        animationSteps: 1,
       }
     });
 
     function render() {
       requestAnimationFrame(render);
       renderer.render(scene, camera);
-      myChart.update();
+      myChart.update({ duration: 0 });
     }
 
     render();

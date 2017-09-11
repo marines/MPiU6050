@@ -20,6 +20,9 @@ const filterCoefficient = 0.96;
 let lastUpdate = 0;
 let resetInProgress = false;
 
+let accX = 0;
+let accY = 0;
+let accZ = 0;
 let angleX = 0;
 let angleY = 0;
 let angleZ = 0;
@@ -43,7 +46,7 @@ function loop() {
     readSensors().then(updateAngles).then(() => {
       const now = (new Date()).getTime();
       if (now - lastUpdate > 1000 / sampleRate) {
-        io.emit('motion', [angleX, angleY, angleZ]);
+        io.emit('motion', [angleX, angleY, angleZ, accX / 16384, accY / 16384, accZ / 16384]);
         lastUpdate = now;
       }
 
@@ -60,9 +63,9 @@ function updateAngles([accRawX, accRawY, accRawZ, gyrRawX, gyrRawY, gyrRawZ]) {
   let gyrX = (gyrRawX - offset.gX) / GYROSCOPE_SCALE_FACTOR;
   let gyrY = (gyrRawY - offset.gY) / GYROSCOPE_SCALE_FACTOR;
   let gyrZ = (gyrRawZ - offset.gZ) / GYROSCOPE_SCALE_FACTOR;
-  let accX = accRawX - offset.aX;
-  let accY = accRawY - offset.aY;
-  let accZ = accRawZ - offset.aZ;
+  accX = accRawX - offset.aX;
+  accY = accRawY - offset.aY;
+  accZ = accRawZ - offset.aZ;
 
   let accAngleY = Math.atan(-accX / Math.sqrt(Math.pow(accY, 2) + Math.pow(accZ, 2))) * 180 / Math.PI;
   let accAngleX = Math.atan(accY / Math.sqrt(Math.pow(accX, 2) + Math.pow(accZ, 2))) * 180 / Math.PI;
