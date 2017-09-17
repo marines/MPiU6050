@@ -44,8 +44,9 @@
           <li class="angle"><a href="#">&#10664;Z: <span id="angleZ"></span></a></li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
-            <li style="padding-top:0.5em"><button id="resetBtn" class="btn btn-primary">Reset</button></li>
-          </ul>
+          <li style="padding-top:0.5em;padding-right:0.5em"><button id="recordBtn" class="btn btn-primary">Start recording</button></li>
+          <li style="padding-top:0.5em"><button id="resetBtn" class="btn btn-primary">Reset</button></li>
+        </ul>
       </div>
       <!--/.nav-collapse -->
     </div>
@@ -56,6 +57,12 @@
     <div class="col-md-4" style="padding-top:1em">
       <canvas id="myChart" width="200" height="200"></canvas>
       <canvas id="accChart" width="200" height="200"></canvas>
+    </div>
+  </div>
+  <div class="container">
+    <div class="col-md-12">
+      <hr/>
+      <textarea id="recording" style="width:100%;height:300px;font-family:monospace;font-size:10px;display:none"></textarea>
     </div>
   </div>
 
@@ -112,6 +119,8 @@
     var angleZEl = document.getElementById('angleZ');
     var sceneEl = document.getElementById('scene');
     var resetEl = document.getElementById('resetBtn');
+    var recordEl = document.getElementById('recordBtn');
+    var recordingEl = document.getElementById('recording');
 
     var sceneWidth = sceneEl.clientWidth;
     var sceneHeight = 480;
@@ -120,6 +129,22 @@
       e.preventDefault();
       console.log('resetting');
       socket.emit('reset', true);
+    }
+
+    var recordingTime = null;
+    var log = [];
+    recordEl.onclick = function (e) {
+      e.preventDefault();
+      if (recordingTime === null) {
+        recordingTime = (new Date()).getTime();
+        recordEl.innerText = 'Finish recording';
+        recordingEl.style.display = 'block';
+        log = [];
+      } else {
+        recordingTime = null;
+        recordEl.innerText = 'Start recording';
+        recordingEl.innerHTML = log.map(line => line.join(';\t')).join('\n');
+      }
     }
 
     var geometry = new THREE.BoxGeometry(300, 100, 700, 4, 1, 4);
@@ -193,14 +218,21 @@
     }
 
     function handleMotionEvent2(cube, [x, y, z, accX, accY, accZ]) {
-      var time = moment().toDate();
-      addData(myChart, time, [y, x, z]);
-      addData(accChart, time, [accY, accX, accZ]);
+      var now = moment();
+      var nowDate = now.toDate();
+
+      addData(myChart, nowDate, [y, x, z]);
+      addData(accChart, nowDate, [accY, accX, accZ]);
 
       cube.rotation.x = x * Math.PI / 180;
       cube.rotation.y = z * Math.PI / 180;
       cube.rotation.z = -y * Math.PI / 180;
 
+      if (recordingTime) {
+
+        log.unshift([now.format('YYYY-MM-DD HH:mm:ss:SSS'), x, y, z, accX, accY, accZ]);
+        recordingEl.innerHTML = log.slice(0, 20).map(line => line.join(';\t')).join('\n');
+      }
     };
 
     /////////////////////////////
